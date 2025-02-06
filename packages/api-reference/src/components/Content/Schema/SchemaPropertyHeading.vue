@@ -8,6 +8,7 @@ withDefaults(
     enum?: boolean
     required?: boolean
     additional?: boolean
+    pattern?: boolean
   }>(),
   {
     level: 0,
@@ -15,7 +16,7 @@ withDefaults(
   },
 )
 
-const rules = ['oneOf', 'anyOf', 'allOf', 'not']
+const discriminators = ['oneOf', 'anyOf', 'allOf', 'not']
 
 const flattenDefaultValue = (value: Record<string, any>) => {
   return Array.isArray(value?.default) && value.default.length === 1
@@ -28,7 +29,10 @@ const flattenDefaultValue = (value: Record<string, any>) => {
     <div
       v-if="$slots.name"
       class="property-name">
-      <slot name="name" />
+      <slot
+        v-if="!pattern"
+        name="name" />
+      <template v-else>&sol;<slot name="name" />&sol;</template>
     </div>
     <div
       v-if="additional"
@@ -37,6 +41,11 @@ const flattenDefaultValue = (value: Record<string, any>) => {
         {{ value['x-additionalPropertiesName'] }}
       </template>
       <template v-else>additional properties</template>
+    </div>
+    <div
+      v-if="pattern"
+      class="property-pattern">
+      <Badge>pattern</Badge>
     </div>
     <div
       v-if="value?.deprecated"
@@ -53,7 +62,6 @@ const flattenDefaultValue = (value: Record<string, any>) => {
     </div>
     <template v-else-if="value?.type">
       <SchemaPropertyDetail>
-        <!-- prettier-ignore -->
         <template v-if="value?.items?.type">
           {{ value.type }}
           {{ value.items.type }}[]
@@ -114,6 +122,12 @@ const flattenDefaultValue = (value: Record<string, any>) => {
         {{ flattenDefaultValue(value) }}
       </SchemaPropertyDetail>
     </template>
+    <template v-else>
+      <!-- Shows only when a discriminator is used (so value?.type is undefined) -->
+      <SchemaPropertyDetail v-if="value?.nullable === true">
+        nullable
+      </SchemaPropertyDetail>
+    </template>
     <div
       v-if="value?.writeOnly"
       class="property-write-only">
@@ -125,20 +139,20 @@ const flattenDefaultValue = (value: Record<string, any>) => {
       read-only
     </div>
     <template
-      v-for="rule in rules.filter((r) => value?.[r] || value?.items?.[r])"
-      :key="rule">
-      <Badge>{{ rule }}</Badge>
+      v-for="discriminator in discriminators.filter(
+        (r) => value?.[r] || value?.items?.[r],
+      )"
+      :key="discriminator">
+      <!-- Only show anyOf, oneOf, allOf if there are more than one schema -->
+      <template v-if="value?.[discriminator]?.length > 1">
+        <Badge>{{ discriminator }}</Badge>
+      </template>
     </template>
     <div
       v-if="required"
       class="property-required">
       required
     </div>
-  </div>
-  <div
-    v-if="$slots.example"
-    class="property-example">
-    <slot name="example" />
   </div>
 </template>
 <style scoped>
@@ -167,11 +181,6 @@ const flattenDefaultValue = (value: Record<string, any>) => {
   font-weight: var(--scalar-semibold);
   font-size: var(--scalar-font-size-3);
   display: flex;
-}
-
-.property-example {
-  margin-top: 8px;
-  font-size: var(--scalar-mini);
 }
 
 .property-additional {

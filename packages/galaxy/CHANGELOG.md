@@ -1,5 +1,17 @@
 # @scalar/galaxy
 
+## 0.2.18
+
+### Patch Changes
+
+- 702c386: feat: mark deletePlanet as experimental
+
+## 0.2.17
+
+### Patch Changes
+
+- 0462003: feat: add readOnly/writeOnly attributes
+
 ## 0.2.16
 
 ### Patch Changes

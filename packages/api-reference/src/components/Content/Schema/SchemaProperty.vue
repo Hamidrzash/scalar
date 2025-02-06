@@ -1,4 +1,9 @@
 <script lang="ts" setup>
+import { formatExample } from '@/components/Content/Schema/helpers/formatExample'
+import {
+  discriminators,
+  optimizeValueForDisplay,
+} from '@/components/Content/Schema/helpers/optimizeValueForDisplay'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { ScalarIcon, ScalarMarkdown } from '@scalar/components'
 import { computed } from 'vue'
@@ -15,11 +20,14 @@ const props = withDefaults(
     compact?: boolean
     description?: string
     additional?: boolean
+    pattern?: boolean
+    withExamples?: boolean
   }>(),
   {
     level: 0,
     required: false,
     compact: false,
+    withExamples: true,
   },
 )
 
@@ -52,6 +60,10 @@ const displayDescription = function (
     return null
   }
 
+  if (value?.patternProperties) {
+    return null
+  }
+
   return description || value?.description || null
 }
 
@@ -71,8 +83,6 @@ const getEnumFromValue = function (value?: Record<string, any>): any[] | [] {
   return value?.enum || value?.items?.enum || []
 }
 
-const rules = ['oneOf', 'anyOf', 'allOf', 'not']
-
 // These helpers manage how enum values are displayed:
 //
 // - For enums with 9 or fewer values, all values are shown.
@@ -86,6 +96,9 @@ const visibleEnumValues = computed(() =>
 const remainingEnumValues = computed(() =>
   getEnumFromValue(props.value).slice(initialEnumCount.value),
 )
+
+/** Simplified discriminators with `null` type. */
+const optimizedValue = computed(() => optimizeValueForDisplay(props.value))
 </script>
 <template>
   <div
@@ -99,9 +112,10 @@ const remainingEnumValues = computed(() =>
     ]">
     <SchemaPropertyHeading
       :additional="additional"
-      :enum="getEnumFromValue(value).length > 1"
+      :pattern="pattern"
+      :enum="getEnumFromValue(value).length > 0"
       :required="required"
-      :value="value">
+      :value="optimizedValue">
       <template
         v-if="name"
         #name>
@@ -127,11 +141,11 @@ const remainingEnumValues = computed(() =>
     </div>
     <!-- Example -->
     <div
-      v-if="value?.example || value?.items?.example"
+      v-if="withExamples && (value?.example || value?.items?.example)"
       class="property-example custom-scroll">
       <span class="property-example-label">Example</span>
       <code class="property-example-value">{{
-        value.example || value?.items.example
+        formatExample(value.example || value?.items.example)
       }}</code>
     </div>
     <template
@@ -156,7 +170,7 @@ const remainingEnumValues = computed(() =>
     </template>
     <!-- Enum -->
     <div
-      v-if="getEnumFromValue(value)?.length > 1"
+      v-if="getEnumFromValue(value)?.length > 0"
       class="property-enum">
       <template v-if="value?.['x-enumDescriptions']">
         <div class="property-list">
@@ -229,30 +243,31 @@ const remainingEnumValues = computed(() =>
           :value="value.items" />
       </div>
     </template>
-    <!-- oneOf -->
+    <!-- Discriminators -->
     <template
-      v-for="rule in rules"
-      :key="rule">
+      v-for="discriminator in discriminators"
+      :key="discriminator">
       <!-- Property -->
       <div
-        v-if="value?.[rule]"
+        v-if="optimizedValue?.[discriminator]"
         class="property-rule">
         <template
-          v-for="(schema, index) in value[rule]"
-          :key="index">
+          v-for="schema in optimizedValue[discriminator]"
+          :key="schema.id">
           <Schema
             :compact="compact"
             :level="level + 1"
+            :noncollapsible="value?.[discriminator].length === 1"
             :value="schema" />
         </template>
       </div>
       <!-- Arrays -->
       <div
-        v-if="value?.items?.[rule] && level < 3"
+        v-if="value?.items?.[discriminator] && level < 3"
         class="property-rule">
         <Schema
-          v-for="(schema, index) in value.items[rule]"
-          :key="index"
+          v-for="schema in value.items[discriminator]"
+          :key="schema.id"
           :compact="compact"
           :level="level + 1"
           :value="schema" />
@@ -337,7 +352,6 @@ const remainingEnumValues = computed(() =>
 .property-example-value {
   all: unset;
   font-family: var(--scalar-font-code);
-  white-space: pre;
   padding: 6px;
   border-top: var(--scalar-border-width) solid var(--scalar-border-color);
 }
@@ -368,7 +382,6 @@ const remainingEnumValues = computed(() =>
 }
 
 .property--compact .property-example {
-  align-items: center;
   background: transparent;
   border: none;
   display: flex;
@@ -377,13 +390,13 @@ const remainingEnumValues = computed(() =>
 }
 .property--compact .property-example-label,
 .property--compact .property-example-value {
-  padding: 0;
+  padding: 3px 0 0 0;
 }
 .property--compact .property-example-value {
   background: var(--scalar-background-2);
   border-top: 0;
   border-radius: var(--scalar-radius);
-  padding: 2px 6px;
+  padding: 3px 4px;
 }
 .property-list {
   border: var(--scalar-border-width) solid var(--scalar-border-color);

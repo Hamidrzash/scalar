@@ -198,8 +198,10 @@ export const createActiveEntitiesStore = ({
   )
 
   /** Cookie associated with the current route */
-  const activeCookieId = computed(
-    () => activeRouterParams.value[PathId.Cookies],
+  const activeCookieId = computed(() =>
+    activeRouterParams.value[PathId.Cookies] === 'default'
+      ? (activeWorkspace.value?.cookies[0] ?? 'default')
+      : activeRouterParams.value[PathId.Cookies],
   )
 
   /**
@@ -268,6 +270,8 @@ export const ACTIVE_ENTITIES_SYMBOL =
  *
  * This store returns anything related to the currently active entities
  * The only reason this is a store and not a simple hook is due to storing the current router here
+ *
+ * @deprecated due to components being used outside of the client now, we should prop drill instead of this hook/store
  */
 export const useActiveEntities = (): ActiveEntitiesStore => {
   const store = inject(ACTIVE_ENTITIES_SYMBOL)

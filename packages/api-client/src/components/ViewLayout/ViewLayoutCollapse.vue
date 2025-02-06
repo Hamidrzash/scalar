@@ -2,24 +2,22 @@
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { ScalarIcon } from '@scalar/components'
 
-withDefaults(
-  defineProps<{
-    defaultOpen?: boolean
-    itemCount?: number
-    layout?: 'client' | 'reference'
-  }>(),
-  {
-    defaultOpen: true,
-    itemCount: 0,
-    layout: 'client',
-  },
-)
+const {
+  defaultOpen = true,
+  itemCount = 0,
+  layout = 'client',
+} = defineProps<{
+  defaultOpen?: boolean
+  itemCount?: number
+  layout?: 'client' | 'reference'
+}>()
 </script>
 <template>
   <Disclosure
     v-slot="{ open }"
     as="div"
     class="focus-within:text-c-1 text-c-2 request-item border-b"
+    :class="{ 'first:border-t': layout === 'client' }"
     :defaultOpen="defaultOpen"
     :static="layout === 'reference'">
     <div class="bg-b-2 flex items-center">

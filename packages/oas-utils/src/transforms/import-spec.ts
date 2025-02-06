@@ -1,3 +1,4 @@
+import type { SelectedSecuritySchemeUids } from '@/entities/shared/utility'
 import {
   type Collection,
   type CollectionPayload,
@@ -19,6 +20,7 @@ import {
   type SecuritySchemePayload,
   securitySchemeSchema,
 } from '@/entities/spec/security'
+import { combineUrlAndPath, isDefined } from '@/helpers'
 import { isHttpMethod } from '@/helpers/httpMethods'
 import { schemaModel } from '@/helpers/schema-model'
 import { keysOf } from '@scalar/object-utils/arrays'
@@ -28,7 +30,7 @@ import {
   load,
   upgrade,
 } from '@scalar/openapi-parser'
-import type { OpenAPIV3, OpenAPIV3_1 } from '@scalar/openapi-types'
+import type { OpenAPIV3_1 } from '@scalar/openapi-types'
 import type { ReferenceConfiguration } from '@scalar/types/legacy'
 import type { UnknownObject } from '@scalar/types/utils'
 import type { Entries } from 'type-fest'
@@ -42,7 +44,7 @@ export const parseSchema = async (
     console.warn('[@scalar/oas-utils] Empty OpenAPI document provided.')
 
     return {
-      schema: {} as OpenAPIV3.Document | OpenAPIV3_1.Document,
+      schema: {} as OpenAPIV3_1.Document,
       errors: [],
     }
   }
@@ -78,11 +80,28 @@ export const parseSchema = async (
      * Temporary fix for the parser returning an empty array
      * TODO: remove this once the parser is fixed
      */
-    schema: (Array.isArray(schema) ? {} : schema) as
-      | OpenAPIV3.Document
-      | OpenAPIV3_1.Document,
+    schema: (Array.isArray(schema) ? {} : schema) as OpenAPIV3_1.Document,
     errors: [...loadErrors, ...derefErrors],
   }
+}
+
+/** Converts selected security requirements to uids */
+export const getSelectedSecuritySchemeUids = (
+  securityRequirements: SelectedSecuritySchemeUids,
+  authentication: { preferredSecurityScheme?: string | null } | undefined,
+  securitySchemeMap: Record<string, string>,
+): SelectedSecuritySchemeUids => {
+  const name =
+    authentication?.preferredSecurityScheme &&
+    securityRequirements.includes(authentication.preferredSecurityScheme)
+      ? authentication.preferredSecurityScheme
+      : securityRequirements[0]
+
+  const uids = Array.isArray(name)
+    ? name.map((k) => securitySchemeMap[k])
+    : securitySchemeMap[name]
+
+  return [uids]
 }
 
 export type ImportSpecToWorkspaceArgs = Pick<
@@ -118,7 +137,7 @@ export async function importSpecToWorkspace(
     authentication,
     baseServerURL,
     documentUrl,
-    servers: overloadServers,
+    servers: configuredServers,
     setCollectionSecurity = false,
     shouldLoad,
     watchMode = false,
@@ -128,7 +147,7 @@ export async function importSpecToWorkspace(
       error: false
       collection: Collection
       requests: Request[]
-      schema: OpenAPIV3.Document | OpenAPIV3_1.Document
+      schema: OpenAPIV3_1.Document
       examples: RequestExample[]
       servers: Server[]
       tags: Tag[]
@@ -145,34 +164,12 @@ export async function importSpecToWorkspace(
   const start = performance.now()
   const requests: Request[] = []
 
-  // Grab the base server URL for relative servers
-  const backupBaseServerUrl =
-    typeof window === 'undefined' ? 'http://localhost' : window.location.origin
-  const _baseServerUrl = baseServerURL ?? backupBaseServerUrl
-
   // Add the base server url to any relative servers
-  const servers: Server[] = serverSchema.array().parse(
-    (overloadServers ?? schema.servers)?.map((s) => {
-      // Prepend base server url if relative
-      if (s?.url?.startsWith('/'))
-        return {
-          ...s,
-          // Ensure we only have one slash between
-          url: [
-            _baseServerUrl.replace(/\/$/, ''),
-            s.url.replace(/^\//, ''),
-          ].join('/'),
-        }
-
-      // Just return a regular server
-      if (s.url) return s
-      // Failsafe for no URL, use the base
-      else
-        return {
-          url: _baseServerUrl,
-          description: 'Replace with your API server',
-        }
-    }) ?? [],
+  const servers: Server[] = getServersFromOpenApiDocument(
+    configuredServers || schema.servers,
+    {
+      baseServerURL,
+    },
   )
 
   /**
@@ -282,7 +279,7 @@ export async function importSpecToWorkspace(
     const methods = Object.keys(path).filter(isHttpMethod)
 
     methods.forEach((method) => {
-      const operation = path[method]
+      const operation: OpenAPIV3_1.OperationObject = path[method]
       const operationServers = serverSchema
         .array()
         .parse(operation.servers ?? [])
@@ -297,31 +294,26 @@ export async function importSpecToWorkspace(
       const { security: operationSecurity, ...operationWithoutSecurity } =
         operation
 
-      // Grab the security requirements for this operation
-      const securityRequirements = (
+      const securityRequirements: SelectedSecuritySchemeUids = (
         operationSecurity ??
-        (schema.security as OpenAPIV3_1.SecurityRequirementObject[]) ??
+        schema.security ??
         []
-      ).flatMap((s: OpenAPIV3_1.SecurityRequirementObject) => {
-        const keys = Object.keys(s)
-        if (keys.length) return keys[0]
-        else return []
-      })
-
-      let selectedSecuritySchemeUids: string[] = []
+      )
+        .map((s: OpenAPIV3_1.SecurityRequirementObject) => {
+          const keys = Object.keys(s)
+          return keys.length > 1 ? keys : keys[0]
+        })
+        .filter(isDefined)
 
       // Set the initially selected security scheme
-      if (securityRequirements.length && !setCollectionSecurity) {
-        const name =
-          authentication?.preferredSecurityScheme &&
-          securityRequirements.includes(
-            authentication.preferredSecurityScheme ?? '',
-          )
-            ? authentication.preferredSecurityScheme
-            : securityRequirements[0]
-        const uid = securitySchemeMap[name]
-        selectedSecuritySchemeUids = [uid]
-      }
+      const selectedSecuritySchemeUids =
+        securityRequirements.length && !setCollectionSecurity
+          ? getSelectedSecuritySchemeUids(
+              securityRequirements,
+              authentication,
+              securitySchemeMap,
+            )
+          : []
 
       const requestPayload: RequestPayload = {
         ...operationWithoutSecurity,
@@ -405,7 +397,7 @@ export async function importSpecToWorkspace(
 
   // Add the request UIDs to the tag children (or collection root)
   requests.forEach((r) => {
-    if (r.tags) {
+    if (r.tags?.length) {
       r.tags.forEach((t) => {
         tagMap[t].children.push(r.uid)
       })
@@ -432,16 +424,24 @@ export async function importSpecToWorkspace(
 
   // ---------------------------------------------------------------------------
   // Generate Collection
-  const securityKeys = Object.keys(schema.security?.[0] ?? security ?? {})
-  let selectedSecuritySchemeUids: string[] = []
 
-  /** Selected security scheme UIDs for the collection, defaults to the first key */
-  if (setCollectionSecurity && securityKeys.length) {
-    const preferred = authentication?.preferredSecurityScheme || securityKeys[0]
-    const uid = securitySchemeMap[preferred]
+  // Grab the security requirements for this operation
+  const securityRequirements: SelectedSecuritySchemeUids = (
+    schema.security ?? []
+  ).map((s: OpenAPIV3_1.SecurityRequirementObject) => {
+    const keys = Object.keys(s)
+    return keys.length > 1 ? keys : keys[0]
+  })
 
-    selectedSecuritySchemeUids = [uid]
-  }
+  // Set the initially selected security scheme
+  const selectedSecuritySchemeUids =
+    securityRequirements.length && setCollectionSecurity
+      ? getSelectedSecuritySchemeUids(
+          securityRequirements,
+          authentication,
+          securitySchemeMap,
+        )
+      : []
 
   const collection = collectionSchema.parse({
     ...schema,
@@ -477,4 +477,56 @@ export async function importSpecToWorkspace(
     tags,
     securitySchemes,
   }
+}
+
+/**
+ * Retrieves a list of servers from an OpenAPI document and converts them to a list of Server entities.
+ */
+export function getServersFromOpenApiDocument(
+  servers: OpenAPIV3_1.ServerObject[] | undefined,
+  { baseServerURL }: Pick<ReferenceConfiguration, 'baseServerURL'> = {},
+): Server[] {
+  if (!servers || !Array.isArray(servers)) return []
+
+  return servers
+    .map((server): Server | undefined => {
+      try {
+        // Validate the server against the schema
+        const parsedSchema = serverSchema.parse(server)
+
+        // Prepend with the base server URL (if the given URL is relative)
+        if (parsedSchema?.url?.startsWith('/')) {
+          // Use the base server URL (if provided)
+          if (baseServerURL) {
+            parsedSchema.url = combineUrlAndPath(
+              baseServerURL,
+              parsedSchema.url,
+            )
+
+            return parsedSchema
+          }
+
+          // Fallback to the current window origin
+          if (typeof window?.location?.origin === 'string') {
+            parsedSchema.url = combineUrlAndPath(
+              window.location.origin,
+              parsedSchema.url,
+            )
+
+            return parsedSchema
+          }
+        }
+
+        // Must be good, return it
+        return parsedSchema
+      } catch (error) {
+        console.warn(`Oops, that’s an invalid server configuration.`)
+        console.warn('Server:', server)
+        console.warn('Error:', error)
+
+        // Return undefined to remove the server
+        return undefined
+      }
+    })
+    .filter(isDefined)
 }

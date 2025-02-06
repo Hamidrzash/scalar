@@ -74,11 +74,25 @@ export default {
         ghost: 'var(--scalar-color-ghost)',
         disabled: 'var(--scalar-color-disabled)',
         btn: 'var(--scalar-button-1-color)',
+        danger: 'var(--scalar-danger-color)',
       },
 
       // Hover Colors
       h: {
         btn: 'var(--scalar-button-1-hover)',
+      },
+
+      // Sidebar Colors
+      sidebar: {
+        b: {
+          1: 'var(--scalar-sidebar-background-1, var(--scalar-background-1))',
+        },
+        c: {
+          1: 'var(--scalar-sidebar-color-1, var(--scalar-color-1))',
+          2: 'var(--scalar-sidebar-color-2, var(--scalar-color-2))',
+        },
+        border:
+          'var(--scalar-sidebar-border-color, var(--scalar-border-color))',
       },
 
       // Utility Colors
@@ -137,6 +151,7 @@ export default {
       spacing: {
         px: '1px',
         header: '48px',
+        border: 'var(--scalar-border-width)',
       },
     },
   },

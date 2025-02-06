@@ -12,15 +12,24 @@ import {
 import { ExampleRequest } from '@/features/ExampleRequest'
 import { ExampleResponses } from '@/features/ExampleResponses'
 import { TestRequestButton } from '@/features/TestRequestButton'
+import {
+  getOperationStability,
+  getOperationStabilityColor,
+  isOperationDeprecated,
+} from '@/helpers/operation'
 import { ScalarErrorBoundary, ScalarMarkdown } from '@scalar/components'
+import type { Request as RequestEntity } from '@scalar/oas-utils/entities/spec'
 import type { TransformedOperation } from '@scalar/types/legacy'
+import { defineProps } from 'vue'
 
 import OperationParameters from '../components/OperationParameters.vue'
 import OperationResponses from '../components/OperationResponses.vue'
 
-const { id, operation, request, secretCredentials } = defineProps<{
+defineProps<{
   id?: string
+  /** @deprecated Use `requestEntity` instead */
   operation: TransformedOperation
+  requestEntity?: RequestEntity
   request: Request | null
   secretCredentials: string[]
 }>()
@@ -30,8 +39,12 @@ const { id, operation, request, secretCredentials } = defineProps<{
     :id="id"
     :label="operation.name">
     <SectionContent>
-      <Badge v-if="operation.information?.deprecated"> Deprecated </Badge>
-      <div :class="operation.information?.deprecated ? 'deprecated' : ''">
+      <Badge
+        v-if="getOperationStability(operation)"
+        :class="getOperationStabilityColor(operation)">
+        {{ getOperationStability(operation) }}
+      </Badge>
+      <div :class="isOperationDeprecated(operation) ? 'deprecated' : ''">
         <SectionHeader :level="3">
           <Anchor :id="id ?? ''">
             {{ operation.name }}
@@ -42,9 +55,9 @@ const { id, operation, request, secretCredentials } = defineProps<{
         <SectionColumn>
           <div class="operation-details">
             <ScalarMarkdown
-              :value="operation.description"
+              :value="requestEntity?.description"
               withImages />
-            <OperationParameters :operation="operation" />
+            <OperationParameters :operation="requestEntity" />
             <OperationResponses :operation="operation" />
           </div>
         </SectionColumn>
@@ -63,7 +76,7 @@ const { id, operation, request, secretCredentials } = defineProps<{
                     :path="operation.path" />
                 </template>
                 <template #footer>
-                  <TestRequestButton :operation="operation" />
+                  <TestRequestButton :operation="requestEntity" />
                 </template>
               </ExampleRequest>
             </ScalarErrorBoundary>

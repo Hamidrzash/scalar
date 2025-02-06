@@ -1,5 +1,79 @@
 # @scalar/oas-utils
 
+## 0.2.102
+
+### Patch Changes
+
+- a34f834: feat: adds accept header by default
+- ef98b9c: fix: setting initial security with no requirements
+- a34f834: feat: adds v-2.5.0 accept header migration
+- ebdf762: feat: add back complex security requirements
+- Updated dependencies [f9bf5f1]
+  - @scalar/openapi-types@0.1.7
+  - @scalar/types@0.0.30
+  - @scalar/themes@0.9.64
+
+## 0.2.101
+
+### Patch Changes
+
+- be34e7d: feat: adds value to server variables schema
+- Updated dependencies [be34e7d]
+- Updated dependencies [51f3177]
+  - @scalar/types@0.0.29
+  - @scalar/themes@0.9.63
+
+## 0.2.100
+
+### Patch Changes
+
+- 12e7232: feat: adds parameter examples support
+- 901970f: fix: removes application/json content type as default
+- f1f39b0: refactor: better handle servers
+- Updated dependencies [776a4e2]
+- Updated dependencies [2ed681b]
+- Updated dependencies [4f12fe4]
+- Updated dependencies [702c386]
+- Updated dependencies [f1f39b0]
+  - @scalar/themes@0.9.62
+  - @scalar/types@0.0.28
+
+## 0.2.99
+
+### Patch Changes
+
+- c803e2d: feat: cookies 🍪
+
+## 0.2.98
+
+### Patch Changes
+
+- Updated dependencies [b552db5]
+  - @scalar/types@0.0.27
+  - @scalar/themes@0.9.61
+
+## 0.2.97
+
+### Patch Changes
+
+- 7df4472: fix: generate types for past migrations, add tests and docs
+- Updated dependencies [60cd6f1]
+- Updated dependencies [60cd6f1]
+- Updated dependencies [e866487]
+- Updated dependencies [13333e6]
+  - @scalar/types@0.0.26
+  - @scalar/themes@0.9.60
+  - @scalar/openapi-types@0.1.6
+
+## 0.2.96
+
+### Patch Changes
+
+- cf0e7b1: feat: generate examples for objects with patternProperties
+- Updated dependencies [7b4ab2c]
+  - @scalar/themes@0.9.59
+  - @scalar/types@0.0.25
+
 ## 0.2.95
 
 ### Patch Changes

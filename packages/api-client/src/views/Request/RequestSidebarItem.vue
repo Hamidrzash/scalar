@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { HttpMethod } from '@/components/HttpMethod'
-import { useSidebar } from '@/hooks'
+import { useLayout, useSidebar } from '@/hooks'
 import { getModifiers } from '@/libs'
 import { PathId } from '@/router'
 import { useWorkspace } from '@/store'
 import { useActiveEntities } from '@/store/active-entities'
 import type { SidebarItem, SidebarMenuItem } from '@/views/Request/types'
-import { ScalarButton, ScalarIcon, ScalarTooltip } from '@scalar/components'
+import {
+  ScalarButton,
+  ScalarIcon,
+  ScalarSidebarGroupToggle,
+  ScalarTooltip,
+} from '@scalar/components'
 import {
   Draggable,
   type DraggableProps,
@@ -14,6 +19,7 @@ import {
   type HoveredItem,
 } from '@scalar/draggable'
 import type { Request } from '@scalar/oas-utils/entities/spec'
+import { shouldIgnoreEntity } from '@scalar/oas-utils/helpers'
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -56,7 +62,6 @@ const { activeCollection, activeRequest, activeRouterParams, activeWorkspace } =
 const {
   collections,
   tags,
-  isReadOnly,
   requests,
   requestExamples,
   collectionMutators,
@@ -67,6 +72,7 @@ const {
 } = useWorkspace()
 const router = useRouter()
 const { collapsedSidebarFolders, toggleSidebarFolder } = useSidebar()
+const { layout } = useLayout()
 
 /** Normalize properties across different types for easy consumption */
 const item = computed<SidebarItem>(() => {
@@ -181,12 +187,12 @@ const highlightClasses = 'hover:bg-sidebar-active-b indent-padding-left'
 /** Due to the nesting, we need a dynamic left offset for hover and active backgrounds */
 const leftOffset = computed(() => {
   if (!props.parentUids.length) return '12px'
-  else if (isReadOnly) return `${(props.parentUids.length - 1) * 12}px`
+  else if (layout === 'modal') return `${(props.parentUids.length - 1) * 12}px`
   else return `${props.parentUids.length * 12}px`
 })
 const paddingOffset = computed(() => {
   if (!props.parentUids.length) return '0px'
-  else if (isReadOnly) return `${(props.parentUids.length - 1) * 12}px`
+  else if (layout === 'modal') return `${(props.parentUids.length - 1) * 12}px`
   else return `${props.parentUids.length * 12}px`
 })
 
@@ -242,7 +248,7 @@ const getDraggableOffsets = computed(() => {
 /** Guard to check if an element is able to be dropped on */
 const _isDroppable = (draggingItem: DraggingItem, hoveredItem: HoveredItem) => {
   // Cannot drop in read only mode
-  if (isReadOnly) return false
+  if (layout === 'modal') return false
   // RequestExamples cannot be dropped on
   if (requestExamples[hoveredItem.id]) return false
   // Collection cannot be dropped into another collection
@@ -283,18 +289,33 @@ const watchIconColor = computed(() => {
 const hasDraftRequests = computed(() => {
   return (
     item.value.title == 'Drafts' &&
-    !isReadOnly &&
+    layout !== 'modal' &&
     item.value.children.length > 0
   )
+})
+
+/**
+ * Check if the item should be shown.
+ * This is used to hide items that are marked as hidden/internal.
+ */
+const shouldShowItem = computed(() => {
+  const request = requests[props.uid]
+  if (request) return !shouldIgnoreEntity(request)
+
+  const tag = tags[props.uid]
+  if (tag) return !shouldIgnoreEntity(tag)
+
+  return true
 })
 </script>
 
 <template>
   <li
+    v-if="shouldShowItem"
     class="relative flex flex-row"
     :class="[
-      (isReadOnly && parentUids.length > 1) ||
-      (!isReadOnly && parentUids.length)
+      (layout === 'modal' && parentUids.length > 1) ||
+      (layout !== 'modal' && parentUids.length)
         ? 'before:bg-border before:pointer-events-none before:z-1 before:absolute before:left-[calc(.75rem_+_.5px)] before:top-0 before:h-[calc(100%_+_.5px)] last:before:h-full before:w-[.5px] mb-[.5px] last:mb-0 indent-border-line-offset'
         : '',
     ]">
@@ -302,7 +323,7 @@ const hasDraftRequests = computed(() => {
       :id="item.entity.uid"
       ref="draggableRef"
       :ceiling="getDraggableOffsets.ceiling"
-      class="flex flex-1 flex-col gap-[.5px] text-sm"
+      class="flex flex-1 flex-col gap-1/2 text-sm"
       :floor="getDraggableOffsets.floor"
       :isDraggable="isDraggable"
       :isDroppable="isDroppable"
@@ -332,7 +353,7 @@ const hasDraftRequests = computed(() => {
             <!-- Menu -->
             <div class="relative">
               <ScalarButton
-                v-if="!isReadOnly"
+                v-if="layout !== 'modal'"
                 class="hidden px-0.5 py-0 hover:bg-b-3 opacity-0 group-hover:opacity-100 group-hover:flex group-focus-visible:opacity-100 group-has-[:focus-visible]:opacity-100 aspect-square h-fit"
                 :class="{
                   flex:
@@ -370,7 +391,7 @@ const hasDraftRequests = computed(() => {
 
       <!-- Collection/Folder -->
       <button
-        v-else-if="!isReadOnly || parentUids.length"
+        v-else-if="layout !== 'modal' || parentUids.length"
         :aria-expanded="collapsedSidebarFolders[item.entity.uid]"
         class="hover:bg-b-2 group relative flex w-full flex-row justify-start gap-1.5 rounded p-1.5 focus-visible:z-10"
         :class="[highlightClasses]"
@@ -378,15 +399,9 @@ const hasDraftRequests = computed(() => {
         @click="toggleSidebarFolder(item.entity.uid)">
         <span class="flex h-5 items-center justify-center max-w-[14px]">
           <slot name="leftIcon">
-            <div
-              :class="{
-                'rotate-90': collapsedSidebarFolders[item.entity.uid],
-              }">
-              <ScalarIcon
-                class="text-c-3 text-sm"
-                icon="ChevronRight"
-                size="md" />
-            </div>
+            <ScalarSidebarGroupToggle
+              class="text-c-3 shrink-0"
+              :open="collapsedSidebarFolders[item.entity.uid]" />
           </slot>
           &hairsp;
         </span>
@@ -405,7 +420,7 @@ const hasDraftRequests = computed(() => {
               }">
               <ScalarButton
                 v-if="
-                  (!isReadOnly && !isDraftCollection) ||
+                  (layout !== 'modal' && !isDraftCollection) ||
                   (isDraftCollection && hasDraftRequests)
                 "
                 class="px-0.5 py-0 hover:bg-b-3 hover:text-c-1 group-focus-visible:opacity-100 group-has-[:focus-visible]:opacity-100 aspect-square h-fit"
@@ -425,7 +440,7 @@ const hasDraftRequests = computed(() => {
                   size="md" />
               </ScalarButton>
               <ScalarButton
-                v-if="!isReadOnly"
+                v-if="layout !== 'modal'"
                 class="px-0.5 py-0 hover:bg-b-3 hover:text-c-1 group-focus-visible:opacity-100 group-has-[:focus-visible]:opacity-100 aspect-square h-fit"
                 size="sm"
                 variant="ghost"

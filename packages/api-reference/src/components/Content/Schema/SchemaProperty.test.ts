@@ -232,4 +232,36 @@ describe('SchemaProperty sub-schema', () => {
     const enumValues = wrapper.findAll('.property-enum-value')
     expect(enumValues).toHaveLength(3)
   })
+
+  it('shows enum value when there is only one', () => {
+    const wrapper = mount(SchemaProperty, {
+      props: {
+        value: {
+          enum: ['a'],
+        },
+      },
+    })
+
+    const enumValues = wrapper.findAll('.property-enum-value')
+    expect(enumValues).toHaveLength(1)
+  })
+
+  it('shows pattern properties for type object', async () => {
+    const wrapper = mount(SchemaProperty, {
+      props: {
+        pattern: true,
+        value: {
+          type: 'object',
+          patternProperties: {
+            '^foo-': {
+              type: 'string',
+            },
+          },
+        },
+      },
+    })
+
+    const badge = wrapper.find('.property-pattern')
+    expect(badge.exists()).toBe(true)
+  })
 })

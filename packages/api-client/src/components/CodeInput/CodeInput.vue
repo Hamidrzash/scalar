@@ -11,15 +11,16 @@ import { ref, toRef, useAttrs, watch, type Ref, computed } from 'vue'
 import DataTableInputSelect from '../DataTable/DataTableInputSelect.vue'
 import { pillPlugin, backspaceCommand } from './codeVariableWidget'
 import EnvironmentVariableDropdown from '@/views/Environment/EnvironmentVariableDropdown.vue'
-import { useWorkspace } from '@/store'
 import { useClipboard } from '@scalar/use-hooks/useClipboard'
 import { ScalarIcon } from '@scalar/components'
 import { prettyPrintJson } from '@scalar/oas-utils/helpers'
 import { useActiveEntities } from '@/store/active-entities'
+import { useLayout } from '@/hooks'
 
 const props = withDefaults(
   defineProps<{
     colorPicker?: boolean
+    disabled?: boolean
     modelValue: string | number
     error?: boolean
     emitOnBlur?: boolean
@@ -34,6 +35,7 @@ const props = withDefaults(
     disableEnter?: boolean
     disableCloseBrackets?: boolean
     enum?: string[]
+    examples?: string[]
     type?: string
     nullable?: boolean
     withVariables?: boolean
@@ -50,6 +52,7 @@ const props = withDefaults(
     nullable: false,
     withVariables: true,
     isCopyable: false,
+    disabled: false,
   },
 )
 const emit = defineEmits<{
@@ -73,8 +76,7 @@ const dropdownRef = ref<InstanceType<
 
 const { activeEnvVariables, activeEnvironment, activeWorkspace } =
   useActiveEntities()
-const { isReadOnly } = useWorkspace()
-
+const { layout } = useLayout()
 const { copyToClipboard } = useClipboard()
 
 // ---------------------------------------------------------------------------
@@ -128,7 +130,7 @@ extensions.push(
     environment: activeEnvironment.value,
     envVariables: activeEnvVariables.value,
     workspace: activeWorkspace.value,
-    isReadOnly,
+    isReadOnly: layout === 'modal',
   }),
   backspaceCommand,
 )
@@ -211,19 +213,31 @@ export default {
 }
 </script>
 <template>
-  <template v-if="props.enum && props.enum.length">
+  <template v-if="disabled">
+    <div class="cursor-default flex items-center justify-center px-2 text-c-2">
+      <span>{{ modelValue }}</span>
+    </div>
+  </template>
+  <template v-else-if="props.enum && props.enum.length">
     <DataTableInputSelect
       :default="props.default"
-      :modelValue="props.modelValue"
+      :modelValue="modelValue"
+      :type="type"
       :value="props.enum"
       @update:modelValue="emit('update:modelValue', $event)" />
   </template>
-  <template
-    v-else-if="props.type === 'boolean' || props.type?.includes('boolean')">
+  <template v-else-if="type === 'boolean' || type?.includes('boolean')">
+    <DataTableInputSelect
+      :default="props.default"
+      :modelValue="modelValue"
+      :value="booleanOptions"
+      @update:modelValue="emit('update:modelValue', $event)" />
+  </template>
+  <template v-else-if="props.examples && props.examples.length">
     <DataTableInputSelect
       :default="props.default"
       :modelValue="props.modelValue"
-      :value="booleanOptions"
+      :value="props.examples"
       @update:modelValue="emit('update:modelValue', $event)" />
   </template>
   <template v-else>
@@ -231,7 +245,7 @@ export default {
       :id="uid"
       v-bind="$attrs"
       ref="codeMirrorRef"
-      class="peer font-code w-full whitespace-nowrap overflow-hidden text-xs leading-[1.44] relative has-[:focus-visible]:outline has-[:focus-visible]:rounded-[4px] -outline-offset-2"
+      class="peer font-code w-full whitespace-nowrap overflow-hidden text-xs leading-[1.44] relative has-[:focus-visible]:outline has-[:focus-visible]:rounded-[4px] -outline-offset-1"
       :class="{
         'flow-code-input--error': error,
       }"
@@ -244,8 +258,9 @@ export default {
         <button
           class="copy-button"
           type="button"
-          @click="copyToClipboard(prettyPrintJson(props.modelValue))">
+          @click="copyToClipboard(prettyPrintJson(modelValue))">
           <span class="sr-only">Copy content</span>
+
           <ScalarIcon
             icon="Clipboard"
             size="md" />
@@ -266,7 +281,7 @@ export default {
   </div>
   <EnvironmentVariableDropdown
     v-if="
-      showDropdown && props.withVariables && !isReadOnly && activeEnvironment
+      showDropdown && withVariables && layout !== 'modal' && activeEnvironment
     "
     ref="dropdownRef"
     :dropdownPosition="dropdownPosition"

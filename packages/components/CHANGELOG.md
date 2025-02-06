@@ -1,5 +1,85 @@
 # @scalar/components
 
+## 0.13.20
+
+### Patch Changes
+
+- 0d8b4ea: fix(components): set z-index on ScalarMenu by default
+
+## 0.13.19
+
+### Patch Changes
+
+- @scalar/themes@0.9.64
+- @scalar/code-highlight@0.0.20
+- @scalar/use-hooks@0.1.18
+
+## 0.13.18
+
+### Patch Changes
+
+- 42d08d7: fix: sets border on inactive checkbox state
+- Updated dependencies [51f3177]
+  - @scalar/themes@0.9.63
+  - @scalar/code-highlight@0.0.20
+  - @scalar/use-hooks@0.1.17
+
+## 0.13.17
+
+### Patch Changes
+
+- 8b5d905: fix: updates floating target ref function
+- 8665004: fix: removes listbox margin
+- 4f12fe4: feat(themes): add scalar danger color
+- 5ab0663: fix: updates button base variant outline offset
+- 917214a: chore: update Scalar support email
+- 776a4e2: docs(components): update components readme
+- Updated dependencies [776a4e2]
+- Updated dependencies [2ed681b]
+- Updated dependencies [4f12fe4]
+  - @scalar/themes@0.9.62
+  - @scalar/code-highlight@0.0.20
+  - @scalar/use-hooks@0.1.16
+
+## 0.13.16
+
+### Patch Changes
+
+- aac6c86: fix(components): improve ScalarMenu team picker a11y
+
+## 0.13.15
+
+### Patch Changes
+
+- 97d8981: feat(components): host storybook on netlify
+- 1bee104: fix: ScalarFloating breaks SSG/SSR environments
+- Updated dependencies [109e320]
+  - @scalar/code-highlight@0.0.20
+  - @scalar/themes@0.9.61
+  - @scalar/use-hooks@0.1.15
+
+## 0.13.14
+
+### Patch Changes
+
+- 2ad0407: fix: updates scalar modal body class specificity
+- e866487: feat(components): create dark light toggle components
+- Updated dependencies [e866487]
+  - @scalar/use-hooks@0.1.14
+  - @scalar/themes@0.9.60
+  - @scalar/code-highlight@0.0.19
+
+## 0.13.13
+
+### Patch Changes
+
+- e17ac68: feat(components): add create team button to team picker
+- 7b4ab2c: feat(components): make ScalarMenu into a dropdown
+- Updated dependencies [7b4ab2c]
+  - @scalar/themes@0.9.59
+  - @scalar/code-highlight@0.0.19
+  - @scalar/use-hooks@0.1.13
+
 ## 0.13.12
 
 ### Patch Changes

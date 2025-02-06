@@ -28,6 +28,7 @@ export const requestExampleParametersSchema = z.object({
   description: z.string().optional(),
   required: z.boolean().optional(),
   enum: z.array(z.string()).optional(),
+  examples: z.array(z.string()).optional(),
   type: z.string().optional(),
   format: z.string().optional(),
   minimum: z.number().optional(),
@@ -135,7 +136,7 @@ const contentMapping: Record<BodyEncoding, BodyMime> = {
 export const exampleRequestBodySchema = z.object({
   raw: z
     .object({
-      encoding: z.enum(exampleRequestBodyEncoding).default('json'),
+      encoding: z.enum(exampleRequestBodyEncoding),
       value: z.string().default(''),
     })
     .optional(),
@@ -157,7 +158,7 @@ export type ExampleRequestBody = z.infer<typeof exampleRequestBodySchema>
 
 /** Schema for the OAS serialization of request example bodies */
 export const xScalarExampleBodySchema = z.object({
-  encoding: z.enum(exampleBodyMime).default('application/json'),
+  encoding: z.enum(exampleBodyMime),
   /**
    * Body content as an object with a separately specified encoding or a simple pre-encoded string value
    *
@@ -183,7 +184,9 @@ export const requestExampleSchema = z.object({
     .object({
       path: requestExampleParametersSchema.array().default([]),
       query: requestExampleParametersSchema.array().default([]),
-      headers: requestExampleParametersSchema.array().default([]),
+      headers: requestExampleParametersSchema
+        .array()
+        .default([{ key: 'Accept', value: '*/*', enabled: true }]),
       cookies: requestExampleParametersSchema.array().default([]),
     })
     .optional()
@@ -315,6 +318,12 @@ export function createParamInstance(param: RequestParameter) {
         ? schema.items.enum.map(String)
         : schema?.enum
 
+  // Handle non-string examples
+  const parseExamples =
+    schema?.examples && schema?.type !== 'string'
+      ? schema.examples?.map(String)
+      : schema?.examples
+
   // safe parse the example
   const example = schemaModel(
     {
@@ -326,6 +335,7 @@ export function createParamInstance(param: RequestParameter) {
       /** Initialized all required properties to enabled */
       enabled: !!param.required,
       enum: parseEnum,
+      examples: parseExamples,
     },
     requestExampleParametersSchema,
     false,
@@ -357,7 +367,7 @@ export function createExampleFromRequest(
     cookie: [],
     // deprecated TODO: add zod transform to remove
     header: [],
-    headers: [],
+    headers: [{ key: 'Accept', value: '*/*', enabled: true }],
   }
 
   // Populated the separated params
@@ -375,10 +385,6 @@ export function createExampleFromRequest(
   // Handle request body defaulting for various content type encodings
   const body: ExampleRequestBody = {
     activeBody: 'raw',
-    raw: {
-      encoding: 'json',
-      value: '',
-    },
   }
 
   if (request.requestBody) {

@@ -9,10 +9,17 @@ import {
   requestExampleParametersSchema,
 } from '@scalar/oas-utils/entities/spec'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 
 const props = defineProps<{
   title: string
   paramKey: keyof RequestExample['parameters']
+  readOnlyEntries?: {
+    key: string
+    value: string
+    enabled: boolean
+    route: RouteLocationRaw
+  }[]
 }>()
 
 const { activeRequest, activeExample } = useActiveEntities()
@@ -145,6 +152,8 @@ const itemCount = computed(
   () => params.value.filter((param) => param.key || param.value).length,
 )
 
+const showTooltip = computed(() => params.value.length > 1)
+
 watch(
   () => activeExample.value,
   (newVal, oldVal) => {
@@ -153,6 +162,10 @@ watch(
     }
   },
   { immediate: true },
+)
+
+const hasReadOnlyEntries = computed(
+  () => (props.readOnlyEntries ?? []).length > 0,
 )
 </script>
 <template>
@@ -163,8 +176,8 @@ watch(
     <template #actions>
       <div
         class="text-c-2 flex whitespace-nowrap opacity-0 group-hover/params:opacity-100 has-[:focus-visible]:opacity-100 request-meta-buttons">
-        <!-- TODO fix this DOC-2740 -->
-        <!-- <ScalarTooltip
+        <ScalarTooltip
+          v-if="showTooltip"
           side="right"
           :sideOffset="12">
           <template #trigger>
@@ -179,16 +192,28 @@ watch(
           </template>
           <template #content>
             <div
-              class="grid gap-1.5 pointer-events-none min-w-48 w-content shadow-lg rounded bg-b-1 z-context p-2 text-xxs leading-5 z-10 text-c-1">
+              class="grid gap-1.5 pointer-events-none min-w-48 w-content shadow-lg rounded bg-b-1 p-2 text-xxs leading-5 z-10 text-c-1">
               <div class="flex items-center text-c-2">
                 <span>Clear optional parameters</span>
               </div>
             </div>
           </template>
-        </ScalarTooltip> -->
+        </ScalarTooltip>
       </div>
     </template>
     <div ref="tableWrapperRef">
+      <!-- Read-only entries pinned to the top -->
+      <RequestTable
+        v-if="hasReadOnlyEntries"
+        class="flex-1"
+        :class="{
+          'bg-mix-transparent bg-mix-amount-95 bg-c-3': hasReadOnlyEntries,
+        }"
+        :columns="['32px', '', '']"
+        isGlobal
+        isReadOnly
+        :items="readOnlyEntries" />
+      <!-- Dynamic entries -->
       <RequestTable
         class="flex-1"
         :columns="['32px', '', '']"

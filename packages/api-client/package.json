@@ -18,7 +18,7 @@
     "rest",
     "testing"
   ],
-  "version": "2.2.30",
+  "version": "2.2.44",
   "engines": {
     "node": ">=18"
   },
@@ -42,6 +42,11 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./views/Servers": {
+      "import": "./dist/views/Servers/index.js",
+      "types": "./dist/views/Servers/index.d.ts",
+      "default": "./dist/views/Servers/index.js"
     },
     "./views/Request/types": {
       "import": "./dist/views/Request/types/index.js",
@@ -133,6 +138,11 @@
       "types": "./dist/components/Sidebar/index.d.ts",
       "default": "./dist/components/Sidebar/index.js"
     },
+    "./components/Server": {
+      "import": "./dist/components/Server/index.js",
+      "types": "./dist/components/Server/index.d.ts",
+      "default": "./dist/components/Server/index.js"
+    },
     "./components/ImportCollection": {
       "import": "./dist/components/ImportCollection/index.js",
       "types": "./dist/components/ImportCollection/index.d.ts",
@@ -196,7 +206,6 @@
     "@vueuse/integrations": "^11.2.0",
     "focus-trap": "^7",
     "fuse.js": "^7.0.0",
-    "js-cookie": "^3.0.5",
     "microdiff": "^1.4.0",
     "nanoid": "^5.0.7",
     "pretty-bytes": "^6.1.1",
@@ -211,7 +220,6 @@
   "devDependencies": {
     "@scalar/build-tooling": "workspace:*",
     "@scalar/galaxy": "workspace:*",
-    "@types/js-cookie": "^3.0.6",
     "@types/shell-quote": "^1.7.5",
     "@types/whatwg-mimetype": "^3.0.2",
     "@vitejs/plugin-vue": "^5.0.4",
